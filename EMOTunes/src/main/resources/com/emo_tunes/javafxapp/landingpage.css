@@ -33,22 +33,35 @@
 }
 
 /* ---------- Search Field ---------- */
-#searchField {
-    -fx-background-radius: 12;
+/* TextField styling (your current style) */
+.search-field {
+    -fx-background-radius: 12 0 0 12; /* round left corners only */
     -fx-background-color: #F1F3F5;
     -fx-text-fill: #333333;
     -fx-prompt-text-fill: #888888;
     -fx-font-family: 'Segoe UI';
     -fx-font-size: 20px;
     -fx-cursor: text;
-    -fx-padding: 15px;
-    -fx-border-radius: 7px;
+    -fx-padding: 10 10 10 15; /* adjust padding to reduce height */
+    -fx-border-radius: 12 0 0 12;
     -fx-border-color: #CED4DA;
-    -fx-border-width: 1;
+    -fx-border-width: 1 0 1 1; /* remove right border so it blends with button */
 }
 
-#searchField:hover {
+/* Hover effect */
+.search-field:hover {
     -fx-background-color: #E9ECEF;
+}
+
+/* Button styling */
+.search-button {
+    -fx-background-radius: 0 12 12 0; /* round right corners */
+    -fx-background-color: #6C63FF;
+    -fx-text-fill: white;
+    -fx-font-size: 16px;
+    -fx-border-color: #CED4DA;
+    -fx-border-width: 1 1 1 0; /* remove left border so it blends with field */
+    -fx-cursor: hand;
 }
 
 /* ---------- User Profile ---------- */

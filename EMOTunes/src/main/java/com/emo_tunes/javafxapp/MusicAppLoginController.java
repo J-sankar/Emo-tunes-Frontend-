@@ -23,6 +23,8 @@ public class MusicAppLoginController {
     @FXML
     private ImageView appLogo;
 
+
+
     private final String backendLoginUrl = "http://localhost:8080/spotify/login";
     private final String callbackUrl = "http://127.0.0.1:8080/callback";
 
@@ -37,10 +39,10 @@ public class MusicAppLoginController {
             System.out.println("Logo not found!");
         }
 
-       spotifyButton.setOnAction(e -> openSpotifyLogin());
-//        UserInfo userInfo = new UserInfo(1,"Tester","tester@gmail.com");
-//        spotifyButton.setOnAction(e -> navigateToLanding(userInfo));
-//        SessionManager.getInstance().setUser(userInfo);
+//       spotifyButton.setOnAction(e -> openSpotifyLogin());
+        UserInfo userInfo = new UserInfo(1,"Tester","tester@gmail.com");
+        spotifyButton.setOnAction(e -> navigateToLanding(userInfo));
+        SessionManager.getInstance().setUser(userInfo);
 
     }
 
