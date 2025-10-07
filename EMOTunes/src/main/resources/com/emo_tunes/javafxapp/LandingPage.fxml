@@ -33,6 +33,7 @@
                 <font><Font name="Segoe UI Bold" size="28"/></font>
             </Label>
             <HBox HBox.hgrow="ALWAYS"/>
+            <!-- Made  the searchbox-->
             <HBox fx:id="searchBar" alignment="CENTER_LEFT" spacing="0" style="-fx-padding: 0;">
                 <!-- Search Field -->
                 <TextField fx:id="searchField"
@@ -124,6 +125,7 @@
                 <ListView fx:id="popupListView" prefWidth="560" prefHeight="400"/>
                 <Label text="Close" fx:id="closePopup" style="-fx-text-fill: #FFD700; -fx-cursor: hand;"/>
             </VBox>
+        <!-- Anchor Pane for Displayling Scroll pane of song cards initially invisible            -->
         <AnchorPane fx:id="resultsPlaceholder" visible="false" opacity="0"/>
         </StackPane>
 

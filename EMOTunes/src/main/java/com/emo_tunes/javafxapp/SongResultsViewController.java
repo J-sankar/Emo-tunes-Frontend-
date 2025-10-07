@@ -13,11 +13,11 @@ public class SongResultsViewController {
     @FXML private VBox resultsContainer;
     @FXML public Button backButton;
     @FXML public Button nextButton;
-
+    //    To clear the results
     public void clearResults() {
         resultsContainer.getChildren().clear();
     }
-
+    //    Adding Song card to the Scroll pane
     public void addSongCard(SongInfo song) {
         VBox card = new VBox(5);
         card.setAlignment(Pos.CENTER);

@@ -189,7 +189,7 @@ public class LandingPageController {
             fetchSongs(false);
         }
     }
-
+    //Controlling the viewing for emotion boxes and Scroll pane
     private void showEmotionsAgain() {
         container.setVisible(true);
         resultsPlaceholder.setVisible(false);
