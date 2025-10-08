@@ -190,7 +190,7 @@ public class LandingPageController {
         }
     }
     //Controlling the viewing for emotion boxes and Scroll pane
-    private void showEmotionsAgain() {
+        private void showEmotionsAgain() {
         container.setVisible(true);
         resultsPlaceholder.setVisible(false);
         resultsPlaceholder.setOpacity(0);
