@@ -1,13 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<?import javafx.scene.control.ListView?>
 <?import javafx.scene.control.Label?>
+<?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.VBox?>
 
 <VBox fx:id="popupRoot" spacing="10" alignment="TOP_CENTER"
       xmlns:fx="http://javafx.com/fxml"
       fx:controller="com.emo_tunes.javafxapp.EmotionSongsPopupController"
-      style="-fx-background-color: #1E1E2F; -fx-padding: 20; -fx-background-radius: 15;">
+      style="-fx-background-color: #1E1E2F; -fx-padding: 20px; -fx-background-radius: 15px;">
 
-    <Label fx:id="titleLabel" text="Songs" style="-fx-text-fill: #FFFFFF; -fx-font-size: 24px;"/>
-    <ListView fx:id="songsListView" prefWidth="400" prefHeight="500"/>
+    <Label fx:id="popupTitle" text="Songs"
+           style="-fx-text-fill: #FFFFFF; -fx-font-size: 24px;"/>
+
+    <ScrollPane fx:id="scrollPane" fitToWidth="true" prefHeight="500"
+                style="-fx-background-color: transparent;">
+        <VBox fx:id="songsContainer" spacing="10"
+              style="-fx-padding: 10px;"/>
+    </ScrollPane>
 </VBox>

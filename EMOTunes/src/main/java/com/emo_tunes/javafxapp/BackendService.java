@@ -33,12 +33,22 @@ public class BackendService {
                 .build();
 
         client.sendAsync(request, HttpResponse.BodyHandlers.ofString())
-                .thenApply(HttpResponse::body)
                 .thenAccept(response -> {
                     ObjectMapper mapper = new ObjectMapper();
                     try {
-                        List<SongInfo> songs = mapper.readValue(response, new TypeReference<List<SongInfo>>() {});
-                        callback.accept(songs);
+                        String body = response.body().trim();
+                        if (body.startsWith("[")) {
+                            // Backend returned an array of songs
+                            List<SongInfo> songs = mapper.readValue(body, new TypeReference<List<SongInfo>>() {});
+                            callback.accept(songs);
+                        } else if (body.startsWith("{")) {
+                            // Backend returned an error object
+                            System.out.println("No songs found or backend error: " + body);
+                            callback.accept(List.of()); // send empty list
+                        } else {
+                            System.out.println("Unexpected response: " + body);
+                            callback.accept(List.of());
+                        }
                     } catch (Exception e) {
                         e.printStackTrace();
                         callback.accept(List.of());
@@ -50,4 +60,5 @@ public class BackendService {
                     return null;
                 });
     }
+
 }
