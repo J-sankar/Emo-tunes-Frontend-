@@ -4,6 +4,7 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationContext;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.animation.*;
+import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
@@ -59,7 +60,7 @@ public class LandingPageController {
     @FXML private Label closePopup;
 
     @FXML private Button searchButton;
-
+private EmotionSongsPopupController emotionPopupController;
     @FXML
     private StackPane mainContentPane;
 
@@ -124,6 +125,17 @@ public class LandingPageController {
             e.printStackTrace();
         }
 
+        try {
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/emo_tunes/javafxapp/EmotionSongsPopup.fxml"));
+            VBox popup = loader.load();
+            emotionPopupController = loader.getController();
+
+            // Add to main pane
+            mainContentPane.getChildren().add(popup);
+            popup.setVisible(false); // hide initially
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         sidebarPlaylists.setText("Playlists");
 
         // Reset to original playlist click handler
@@ -354,6 +366,7 @@ public class LandingPageController {
 
     @FXML
     private void handleSidebarEmoListsClick() {
+
         try {
             // Load the EmoListPage FXML
             FXMLLoader loader = new FXMLLoader(getClass().getResource("EmoListPage.fxml"));
@@ -375,28 +388,32 @@ public class LandingPageController {
     }
 
     // Fixed emotion popup
+
+
     @FXML
     private void handleEmotionClick(MouseEvent event) {
         VBox clickedBox = (VBox) event.getSource();
-        String emotion = ((Label) clickedBox.getChildren().get(0)).getText(); // first child is label
+        String emotion = ((Label) clickedBox.getChildren().get(0)).getText();
 
-        // Show popup immediately (optional: you can show a loading state)
-        showEmotionPopup(emotion, List.of("Loading songs..."));
+        BackendService.getSongsByEmotion(emotion, songs -> {
+            Platform.runLater(() -> {
+                if (emotionPopupController != null) {
+                    emotionPopupController.setSongs(emotion, songs);
 
-        // Send request to backend asynchronously
-        new Thread(() -> {
-            try {
-                List<String> songs = BackendService.getSongsByEmotion(emotion); // your backend call
-                // Update UI on JavaFX Application Thread
-                javafx.application.Platform.runLater(() -> showEmotionPopup(emotion, songs));
-            } catch (Exception e) {
-                e.printStackTrace();
-                javafx.application.Platform.runLater(() ->
-                        showEmotionPopup(emotion, List.of("Failed to fetch songs."))
-                );
-            }
-        }).start();
+                    // Show popup with fade-in
+                    VBox popupRoot = emotionPopupController.getRoot();
+                    popupRoot.setVisible(true);
+                    popupRoot.toFront();
+
+                    FadeTransition fadeIn = new FadeTransition(Duration.millis(300), popupRoot);
+                    fadeIn.setFromValue(0);
+                    fadeIn.setToValue(1);
+                    fadeIn.play();
+                }
+            });
+        });
     }
+
 
     @FXML
     private void handleSidebarPlaylistsClick() {
@@ -407,9 +424,7 @@ public class LandingPageController {
                 Parent playlistView = loader.load();
 
                 PlaylistPageController controller = loader.getController();
-                if (userInfo != null) {
-                    controller.setUserInfo(userInfo);
-                }
+
 
                 mainContentPane.getChildren().setAll(playlistView);
 

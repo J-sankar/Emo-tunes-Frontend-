@@ -11,7 +11,10 @@ public class SongInfo {
     private String songURL;
 
     public SongInfo() {} // default constructor required by Jackson
-
+    @Override
+    public String toString() {
+        return songName + " - " + artistName; // what will appear in ListView
+    }
     // Getters and setters
     public String getSongID() { return songID; }
     public void setSongID(String songID) { this.songID = songID; }

@@ -1,5 +1,7 @@
 package com.emo_tunes.javafxapp;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.animation.KeyFrame;
 import javafx.animation.KeyValue;
 import javafx.animation.Timeline;
@@ -17,6 +19,11 @@ import javafx.scene.paint.Color;
 import javafx.util.Duration;
 
 import javafx.scene.control.Button;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -40,16 +47,10 @@ public class PlaylistPageController {
         dialog.setContentText("Playlist name:");
 
         dialog.showAndWait().ifPresent(name -> {
-            System.out.println("Creating playlist: " + name);
-
-            // Example: Add it to the UI immediately
-            String[] demoSongs = {"New Song 1", "New Song 2"};
-            playlistContainer.getChildren().add(0, createPlaylistCard(name,
-                    "https://i.scdn.co/image/ab67616d0000b2732db7ff835f7a3d7ff7e6b6c9", demoSongs));
-
-            // TODO: Optionally call backend API to persist it
+            createPlaylist(name, null, List.of(),true); // null cover uses default image, empty initial songs
         });
     }
+
 
 //FOR CALLING BACKEND API TO PERSIST CREATED PLAYLIST
 //    @FXML
@@ -95,18 +96,150 @@ public class PlaylistPageController {
                     "Song 3 from " + name
             };
             playlistContainer.getChildren().add(createPlaylistCard(name, coverImage, songs));
+            UserInfo currentUser = SessionManager.getInstance().getUser();
+            if (currentUser == null) {
+                System.out.println("User not logged in!");
+                return;
+            }
+            int userId = currentUser.getUserId();
+            loadPlaylistsFromBackend(userId);
         }
     }
 
-    private UserInfo userInfo;
 
-    public void setUserInfo(UserInfo userInfo) {
-        this.userInfo = userInfo;
-        // Optional: use it later to personalize playlists
+    private void loadPlaylistsFromBackend(int userId) {
+        new Thread(() -> {
+            try {
+                String urlString = "http://localhost:8080/playlist/user?userId=" + userId;
+                URL url = new URL(urlString);
+                HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("Accept", "application/json");
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) {
+                        response.append(line);
+                    }
+                    reader.close();
+
+                    ObjectMapper mapper = new ObjectMapper();
+                    List<PlaylistInfo> playlists = mapper.readValue(
+                            response.toString(),
+                            new TypeReference<List<PlaylistInfo>>() {}
+                    );
+
+                    javafx.application.Platform.runLater(() -> {
+                        playlistContainer.getChildren().clear();
+                        for (PlaylistInfo playlist : playlists) {
+                            String[] songs = playlist.getSongs()
+                                    .stream()
+                                    .map(song -> song.getSongName())
+                                    .toArray(String[]::new);
+
+                            playlistContainer.getChildren().add(
+                                    createPlaylistCard(
+                                            playlist.getPlaylistName(),
+                                            playlist.getCoverUrl(),
+                                            songs
+                                    )
+                            );
+                        }
+                    });
+                } else {
+                    System.err.println("⚠️ HTTP Error: " + responseCode);
+                }
+
+                conn.disconnect();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
+    }
+    /**
+     * Creates a playlist in the UI and optionally persists it to the backend.
+     * @param playlistName The name of the new playlist
+     * @param coverUrl URL of the cover image (optional, can be null)
+     * @param songs Initial list of songs (can be empty)
+     * @param persistBackend If true, sends the playlist to backend
+     */
+    private void createPlaylist(String playlistName, String coverUrl, List<String> songs, boolean persistBackend) {
+        // 1️⃣ Add playlist to UI
+        String[] songsArray = songs.toArray(new String[0]);
+        playlistContainer.getChildren().add(0, createPlaylistCard(
+                playlistName,
+                coverUrl != null ? coverUrl : "https://i.scdn.co/image/ab67616d0000b2732db7ff835f7a3d7ff7e6b6c9", // default image
+                songsArray
+        ));
+
+        // 2️⃣ Persist to backend if needed
+        if (persistBackend) {
+            new Thread(() -> {
+                try {
+                    UserInfo currentUser = SessionManager.getInstance().getUser();
+                    if (currentUser == null) {
+                        System.out.println("User not logged in!");
+                        return;
+                    }
+
+                    int userId = currentUser.getUserId();
+
+                    Map<String, Object> payload = new HashMap<>();
+                    payload.put("name", playlistName);
+                    payload.put("coverUrl", coverUrl);  // allow null
+                    payload.put("songs", songs);
+
+
+                    String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+                    String finalUrl = "http://localhost:8080/playlist/create?userId=" + userId;
+                    URL url = new URL(finalUrl); // replace with your endpoint
+                    HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+                    conn.setRequestMethod("POST");
+                    conn.setRequestProperty("Content-Type", "application/json");
+                    conn.setDoOutput(true);
+
+                    conn.getOutputStream().write(jsonPayload.getBytes());
+                    int responseCode = conn.getResponseCode();
+                    if (responseCode == 200 || responseCode == 201) {
+                        System.out.println("Playlist saved to backend: " + playlistName);
+                        loadPlaylistsFromBackend(userId);
+                    } else {
+                        System.err.println("Failed to save playlist. HTTP code: " + responseCode);
+                    }
+
+                    conn.disconnect();
+                } catch (Exception ex) {
+                    ex.printStackTrace();
+                }
+            }).start();
+        }
     }
 
+
+
     private HBox createPlaylistCard(String name, String imageUrl, String[] songs) {
-        ImageView cover = new ImageView(new Image(imageUrl, true));
+        Image coverImage;
+
+        try {
+            if (imageUrl != null && !imageUrl.isBlank()) {
+                coverImage = new Image(imageUrl, true);
+            } else {
+                // Fallback to default image if URL is missing
+                coverImage = new Image(
+                        getClass().getResource("default_cover.png").toExternalForm()
+                );
+            }
+        } catch (Exception e) {
+            System.err.println("⚠️ Invalid cover URL for playlist: " + name + " -> " + imageUrl);
+            // fallback to local image if error occurs
+            coverImage = new Image(
+                    getClass().getResource("default_cover.png").toExternalForm()
+            );
+        }
+        ImageView cover = new ImageView(coverImage);
         cover.setFitWidth(80);
         cover.setFitHeight(80);
         cover.setStyle("-fx-background-radius: 10;");
