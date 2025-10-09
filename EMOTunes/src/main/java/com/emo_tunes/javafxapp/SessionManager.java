@@ -5,7 +5,7 @@ public class SessionManager {
     private static SessionManager instance;
     private UserInfo currentUser;
 
-    private SessionManager() {}
+    private SessionManager() { }
 
     public static SessionManager getInstance() {
         if (instance == null) {
@@ -19,14 +19,10 @@ public class SessionManager {
     }
 
     public UserInfo getUser() {
-        return this.currentUser;
+        return currentUser;
     }
 
     public boolean isLoggedIn() {
         return currentUser != null;
-    }
-
-    public void clear() {
-        currentUser = null;
     }
 }
