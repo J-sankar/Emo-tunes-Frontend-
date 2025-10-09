@@ -2,6 +2,9 @@
 <?import javafx.scene.control.Label?>
 <?import javafx.scene.control.ScrollPane?>
 <?import javafx.scene.layout.VBox?>
+<?import javafx.scene.layout.HBox?>
+<?import javafx.scene.control.Button?>
+
 
 <VBox fx:id="popupRoot" spacing="10" alignment="TOP_CENTER"
       xmlns:fx="http://javafx.com/fxml"
@@ -16,4 +19,11 @@
         <VBox fx:id="songsContainer" spacing="10"
               style="-fx-padding: 10px;"/>
     </ScrollPane>
+
+    <HBox spacing="10" alignment="CENTER">
+        <Button fx:id="backButton" text="Back" />
+        <Button fx:id="nextButton" text="Next" />
+        <Button fx:id="closeButton" text="Close" />
+    </HBox>
 </VBox>
+

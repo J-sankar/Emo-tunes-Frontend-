@@ -50,7 +50,7 @@ public class LandingPageController {
     @FXML private VBox emotionPopup;          // kept only for the legacy popup// already from FXML
     @FXML private VBox songsContainer; // add this in FXML popup VBox for song cards
 
-
+    @FXML private VBox emotionsContainer;
 
     /* ---- Runtime helpers ---- */
     private EmotionSongsPopupController emotionPopupController;
@@ -139,6 +139,7 @@ public class LandingPageController {
             e.printStackTrace();
         }
     }
+
     /* ----------  App logo  ---------- */
     private void loadAppLogo() {
         try {
@@ -156,7 +157,26 @@ public class LandingPageController {
         addSidebarHover(sidebarEmolists);
         addSidebarHover(sidebarLogout);
     }
+    @FXML
+    private void handleEmoListButton() {
 
+    }
+
+    @FXML
+    private void handleEmotionClick(MouseEvent event) {
+        VBox clickedBox = (VBox) event.getSource();
+        String emotion = "";
+
+        if (clickedBox == happyBox) emotion = "Happy";
+        else if (clickedBox == loveBox) emotion = "Love";
+        else if (clickedBox == upliftBox) emotion = "Uplift";
+        else if (clickedBox == sadBox) emotion = "Sad";
+        else if (clickedBox == rageBox) emotion = "Rage";
+
+        if (!emotion.isEmpty() && emotionPopupController != null) {
+            emotionPopupController.showPopup(emotion);
+        }
+    }
     private void addSidebarHover(Label label) {
         label.setOnMouseEntered(e ->
                 label.setStyle("-fx-text-fill:#FFD700; -fx-font-family:'Segoe UI'; -fx-font-size:18px;"));
@@ -227,20 +247,35 @@ public class LandingPageController {
         fadeOutSubtitle.play();
     }
     /* ----------  Emotion pop‑up  ---------- */
-    @FXML
-    private void handleEmotionClick(MouseEvent event) {
-        VBox sourceBox = (VBox) event.getSource();
-        Label label = (Label) sourceBox.getChildren().get(0);
-        String emotion = label.getText().trim();
+    private void closeEmotionPopup() {
+        FadeTransition ft = new FadeTransition(Duration.millis(300), emotionPopup);
+        ft.setFromValue(1);
+        ft.setToValue(0);
+        ft.setOnFinished(e -> emotionPopup.setVisible(false));
+        ft.play();
 
-        container.setVisible(false);       // hide main content
-        emotionPopupController.showPopup(emotion);
+        // Show main emotions container again
+        container.setVisible(true);
+    }
+
+    // When opening the popup
+    private void openEmotionPopup(String emotion) {
+        container.setVisible(false);       // hide main emotions
+        emotionPopup.setVisible(true);
+        emotionPopup.setOpacity(0);
+
+        FadeTransition ft = new FadeTransition(Duration.millis(300), emotionPopup);
+        ft.setFromValue(0);
+        ft.setToValue(1);
+        ft.play();
+
+        // You can populate your popup list here
     }
 
 
-
-
-
+    public void showEmotionsPage() {
+        emotionsContainer.setVisible(true);
+    }
 
     /* ----------  Hover effects  ---------- */
     @FXML
@@ -297,12 +332,17 @@ public class LandingPageController {
     private void handleSidebarEmoListsClick() {
         try {
             FXMLLoader loader = new FXMLLoader(getClass().getResource("EmoListPage.fxml"));
-            Parent emoListPage = loader.load();
+            Parent root = loader.load();
 
+            // Get the controller instance
             EmoListPageController controller = loader.getController();
-            controller.setUserInfo(userInfo);
-            mainContentPane.getChildren().setAll(emoListPage);
-            sidebarEmolists.setText("Home");
+
+            // Trigger fetching
+            controller.fetchEmoListsForCurrentUser();
+
+            // Replace main content (or use StackPane, etc.)
+            mainContentPane.getChildren().setAll(root);
+
         } catch (IOException e) {
             e.printStackTrace();
         }

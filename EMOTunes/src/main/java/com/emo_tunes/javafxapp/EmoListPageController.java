@@ -1,132 +1,257 @@
 package com.emo_tunes.javafxapp;
 
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.fxml.FXML;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.ColorPicker;
-import javafx.scene.control.Dialog;
-import javafx.scene.control.Label;
-import javafx.scene.control.ButtonType;
+import javafx.scene.control.*;
+import javafx.scene.effect.DropShadow;
+import javafx.scene.image.Image;
+import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.shape.Rectangle;
-import javafx.scene.text.Font;
+
+import java.io.BufferedReader;
+import java.io.InputStreamReader;
+import java.net.HttpURLConnection;
+import java.net.URL;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class EmoListPageController {
 
     @FXML
-    private VBox emolistContainer; // VBox in FXML where playlists will be added
+    private VBox emolistContainer;
 
     @FXML
-    private Button createPlaylistBtn;
+    private Button createEmoListBtn;
 
-    // This method is called by FXML button
-    @FXML
-    private void handleCreateEmoList() {
-        handleCreatePlaylist();
+    /** Fetch EmoLists for currently logged-in user */
+    public void fetchEmoListsForCurrentUser() {
+        UserInfo user = SessionManager.getInstance().getUser();
+        if (user != null) {
+            loadEmoListsFromBackend(user.getUserId());
+        }
     }
 
-    // Core playlist creation logic
-    private void handleCreatePlaylist() {
-        Dialog<EmoPlaylist> dialog = new Dialog<>();
-        dialog.setTitle("Create EmoList Playlist");
-        dialog.setHeaderText("Enter playlist details");
+    @FXML
+    private void handleCreateEmoList() {
+        Dialog<PlaylistInfo> dialog = new Dialog<>();
+        dialog.setTitle("Create EmoList");
+        dialog.setHeaderText("Enter details for your new EmoList");
 
-        ButtonType createButtonType = new ButtonType("Create", ButtonType.OK.getButtonData());
-        dialog.getDialogPane().getButtonTypes().addAll(createButtonType, ButtonType.CANCEL);
+        // ✅ Set a dialog pane with standard button area
+        DialogPane dialogPane = dialog.getDialogPane();
+        dialogPane.getButtonTypes().addAll(ButtonType.CANCEL, ButtonType.OK);
 
-        VBox dialogContent = new VBox(10);
-        dialogContent.setPadding(new Insets(20));
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(20));
 
-        Label nameLabel = new Label("Playlist Name:");
-        javafx.scene.control.TextField nameField = new javafx.scene.control.TextField();
+        Label nameLabel = new Label("EmoList Name:");
+        TextField nameField = new TextField();
 
         Label emotionLabel = new Label("Emotion:");
-        javafx.scene.control.TextField emotionField = new javafx.scene.control.TextField();
+        TextField emotionField = new TextField();
 
-        Label colorLabel = new Label("Color:");
-        ColorPicker colorPicker = new ColorPicker(Color.LIGHTBLUE);
+        content.getChildren().addAll(nameLabel, nameField, emotionLabel, emotionField);
+        dialogPane.setContent(content);
 
-        dialogContent.getChildren().addAll(nameLabel, nameField, emotionLabel, emotionField, colorLabel, colorPicker);
-        dialog.getDialogPane().setContent(dialogContent);
+        // ✅ Access the OK button (renaming it to "Create")
+        Button okButton = (Button) dialogPane.lookupButton(ButtonType.OK);
+        okButton.setText("Create");
+        okButton.setDisable(true);
 
-        Button createButton = (Button) dialog.getDialogPane().lookupButton(createButtonType);
-        createButton.setDisable(true);
-        nameField.textProperty().addListener((obs, oldVal, newVal) -> createButton.setDisable(newVal.trim().isEmpty()));
+        // Enable only when name is filled
+        nameField.textProperty().addListener((obs, oldVal, newVal) ->
+                okButton.setDisable(newVal.trim().isEmpty())
+        );
 
+        // ✅ Convert result into PlaylistInfo
         dialog.setResultConverter(dialogButton -> {
-            if (dialogButton == createButtonType) {
-                return new EmoPlaylist(nameField.getText().trim(),
-                        emotionField.getText().trim(),
-                        colorPicker.getValue());
+            if (dialogButton == ButtonType.OK) {
+                PlaylistInfo emoList = new PlaylistInfo();
+                emoList.setPlaylistName(nameField.getText().trim());
+                emoList.setEmotion(emotionField.getText().trim());
+                return emoList;
             }
             return null;
         });
 
-        dialog.showAndWait().ifPresent(this::addEmoPlaylistCard);
+        // ✅ Handle the result
+        dialog.showAndWait().ifPresent(newEmoList -> {
+            try {
+                createEmoList(newEmoList); // your backend call
+                showAlert(Alert.AlertType.INFORMATION, "Success", "EmoList created successfully!");
+            } catch (Exception e) {
+                e.printStackTrace();
+                showAlert(Alert.AlertType.ERROR, "Error", "Failed to create EmoList.");
+            }
+        });
     }
 
-    // Add playlist card to the container
-    private void addEmoPlaylistCard(EmoPlaylist playlist) {
-        VBox card = new VBox(10);
-        card.setPadding(new Insets(15));
-        card.setAlignment(Pos.TOP_CENTER);
-        card.setStyle("-fx-background-color: " + toRgbString(playlist.color) + "; -fx-background-radius: 15;");
+    // Optional helper for alerts
+    private void showAlert(Alert.AlertType type, String title, String message) {
+        Alert alert = new Alert(type);
+        alert.setTitle(title);
+        alert.setHeaderText(null);
+        alert.setContentText(message);
+        alert.showAndWait();
+    }
 
-        Label nameLabel = new Label(playlist.name);
-        nameLabel.setFont(Font.font("Segoe UI Bold", 20));
-        nameLabel.setTextFill(Color.WHITE);
 
-        Label emotionLabel = new Label("Mood: " + playlist.emotion);
-        emotionLabel.setFont(Font.font("Segoe UI", 14));
-        emotionLabel.setTextFill(Color.WHITE);
-
-        HBox songsContainer = new HBox(10);
-        songsContainer.setAlignment(Pos.CENTER_LEFT);
-        songsContainer.setPadding(new Insets(10));
-
-        // Example placeholder songs
-        for (int i = 1; i <= 3; i++) {
-            VBox songCard = new VBox();
-            songCard.setAlignment(Pos.CENTER);
-            songCard.setPadding(new Insets(10));
-            songCard.setStyle("-fx-background-color: rgba(255,255,255,0.2); -fx-background-radius: 10;");
-
-            Rectangle albumArt = new Rectangle(60, 60, Color.WHITE);
-            Label songLabel = new Label("Song " + i);
-            songLabel.setTextFill(Color.WHITE);
-
-            songCard.getChildren().addAll(albumArt, songLabel);
-            songsContainer.getChildren().add(songCard);
+    /** Add EmoList to UI and persist to backend */
+    private void createEmoList(PlaylistInfo emoList) {
+        // Ensure songs list is not null
+        if (emoList.getSongs() == null) {
+            emoList.setSongs(new ArrayList<>());
         }
 
-        card.getChildren().addAll(nameLabel, emotionLabel, songsContainer);
-        emolistContainer.getChildren().add(card);
+        // Add UI card
+        emolistContainer.getChildren().add(0, createEmoListCard(emoList));
+
+        new Thread(() -> {
+            try {
+                UserInfo currentUser = SessionManager.getInstance().getUser();
+                if (currentUser == null) return;
+
+                int userId = currentUser.getUserId();
+
+                Map<String, Object> payload = new HashMap<>();
+                payload.put("name", emoList.getPlaylistName());
+                payload.put("emotion", emoList.getEmotion());
+                payload.put("songs", emoList.getSongs()); // safe now
+
+                String jsonPayload = new ObjectMapper().writeValueAsString(payload);
+
+                String urlStr = "http://localhost:8080/playlist/create?userId=" + userId;
+                HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+                conn.setRequestMethod("POST");
+                conn.setRequestProperty("Content-Type", "application/json");
+                conn.setDoOutput(true);
+                conn.getOutputStream().write(jsonPayload.getBytes());
+
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200 || responseCode == 201) {
+                    System.out.println("EmoList saved: " + emoList.getPlaylistName());
+                    loadEmoListsFromBackend(userId);
+                } else {
+                    System.err.println("Failed to save EmoList. HTTP code: " + responseCode);
+                }
+
+                conn.disconnect();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
-    // Convert Color to CSS RGB string
-    private String toRgbString(Color color) {
-        int r = (int) (color.getRed() * 255);
-        int g = (int) (color.getGreen() * 255);
-        int b = (int) (color.getBlue() * 255);
-        return "rgb(" + r + "," + g + "," + b + ")";
+
+    /** Load EmoLists from backend for a user */
+    private void loadEmoListsFromBackend(int userId) {
+        new Thread(() -> {
+            try {
+                String urlStr = "http://localhost:8080/playlist/user/emolist?userId=" + userId;
+                HttpURLConnection conn = (HttpURLConnection) new URL(urlStr).openConnection();
+                conn.setRequestMethod("GET");
+                conn.setRequestProperty("Accept", "application/json");
+
+                if (conn.getResponseCode() == 200) {
+                    BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
+                    StringBuilder response = new StringBuilder();
+                    String line;
+                    while ((line = reader.readLine()) != null) response.append(line);
+                    reader.close();
+
+                    ObjectMapper mapper = new ObjectMapper();
+                    List<PlaylistInfo> lists = mapper.readValue(response.toString(), new TypeReference<List<PlaylistInfo>>() {});
+
+                    javafx.application.Platform.runLater(() -> {
+                        emolistContainer.getChildren().clear();
+                        for (PlaylistInfo list : lists)
+                            emolistContainer.getChildren().add(createEmoListCard(list));
+                    });
+                } else {
+                    System.err.println("Failed to fetch EmoLists, HTTP code: " + conn.getResponseCode());
+                }
+                javafx.application.Platform.runLater(() -> {
+
+                });
+
+
+                conn.disconnect();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }).start();
     }
 
-    public void setUserInfo(UserInfo userInfo) {
-    }
+    /** Create UI card for an EmoList */
+    private HBox createEmoListCard(PlaylistInfo emoList) {
+        Image cover = new Image("https://i.scdn.co/image/ab67616d0000b2732db7ff835f7a3d7ff7e6b6c9", true);
+        ImageView coverView = new ImageView(cover);
+        coverView.setFitWidth(80);
+        coverView.setFitHeight(80);
 
-    // Simple POJO for playlist info
-    public static class EmoPlaylist {
-        public String name;
-        public String emotion;
-        public Color color;
+        Label nameLabel = new Label(emoList.getPlaylistName());
+        nameLabel.setStyle("-fx-font-weight: bold; -fx-font-size: 16px; -fx-text-fill: white;");
 
-        public EmoPlaylist(String name, String emotion, Color color) {
-            this.name = name;
-            this.emotion = emotion;
-            this.color = color;
+        Label emotionLabel = new Label("Mood: " + emoList.getEmotion());
+        emotionLabel.setStyle("-fx-font-size: 12px; -fx-text-fill: #ddd;");
+
+        VBox songsBox = new VBox(5);
+        songsBox.setVisible(false);
+        songsBox.setManaged(false);
+
+        for (SongInfo song : emoList.getSongs()) {
+            Label songLabel = new Label("♪ " + song.getSongName());
+            songLabel.setStyle("-fx-text-fill: white;");
+            songsBox.getChildren().add(songLabel);
         }
+
+        Button addSongBtn = new Button("+ Add Song");
+        addSongBtn.setOnAction(e -> {
+            TextInputDialog dialog = new TextInputDialog();
+            dialog.setTitle("Add Song");
+            dialog.setHeaderText("Add a song to " + emoList.getPlaylistName());
+            dialog.setContentText("Song Name:");
+            dialog.showAndWait().ifPresent(song -> {
+                if (!song.isEmpty()) {
+                    Label songLabel = new Label("♪ " + song);
+                    songLabel.setStyle("-fx-text-fill: white;");
+                    songsBox.getChildren().add(songLabel);
+                    songsBox.setVisible(true);
+                    songsBox.setManaged(true);
+                }
+            });
+        });
+
+        VBox rightBox = new VBox(nameLabel, emotionLabel, addSongBtn, songsBox);
+        rightBox.setSpacing(5);
+        rightBox.setAlignment(Pos.CENTER_LEFT);
+
+        HBox card = new HBox(15, coverView, rightBox);
+        card.setPadding(new Insets(10));
+        card.setStyle("-fx-background-color: rgba(0,0,0,0.6); -fx-background-radius: 15;");
+        card.setEffect(new DropShadow(8, Color.BLACK));
+
+        card.setOnMouseClicked(e -> {
+            boolean visible = songsBox.isVisible();
+            songsBox.setVisible(!visible);
+            songsBox.setManaged(!visible);
+        });
+
+        return card;
     }
+
+    /** EmoList model (no Color field) */
+
+
+         // for Jackson
+
+
+
 }
