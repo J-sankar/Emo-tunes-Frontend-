@@ -127,7 +127,7 @@ public class SongDetailsPageController {
             dialog.showAndWait().ifPresent(this::addSongToPlaylistBackend);
         });
 
-        task.setOnFailed(e -> showAlert("Error", "Failed to fetch playlists"));
+        task.setOnFailed(e -> showAlert("No Playlists found", "Create a playlist first!"));
 
         new Thread(task).start();
     }
