@@ -187,14 +187,12 @@ public class EmotionSongsPopupController {
         coverView.setFitHeight(60);
         coverView.setPreserveRatio(true);
 
-        // Default placeholder image if song cover not available
         String coverURL = song.getCoverURL();
         try {
             Image cover;
             if (coverURL != null && !coverURL.isEmpty()) {
                 cover = new Image(coverURL, true);
             } else {
-                // Use a local placeholder image from resources
                 cover = new Image(getClass().getResource("/com/emo_tunes/javafxapp/images/placeholder.png").toExternalForm());
             }
             coverView.setImage(cover);
@@ -213,8 +211,29 @@ public class EmotionSongsPopupController {
         infoBox.getChildren().addAll(titleLabel, artistLabel);
         card.getChildren().addAll(coverView, infoBox);
 
+        // Make card clickable
+        card.setOnMouseClicked(event -> {
+            System.out.println("Clicked on song: " + song.getSongName());
+            openSongDetailPage(song);
+        });
+
+
+        // Optional: add hover effect
+        card.setOnMouseEntered(e -> card.setStyle("-fx-background-color: #3A3A4A; -fx-padding: 10; -fx-background-radius: 10;"));
+        card.setOnMouseExited(e -> card.setStyle("-fx-background-color: #2E2E3E; -fx-padding: 10; -fx-background-radius: 10;"));
+
         return card;
     }
+    private void openSongDetailPage(SongInfo song) {
+        // Example: you can open a new FXML popup
+        try {
+            SongDetailsPageController popup = new SongDetailsPageController(); // your custom popup class
+            popup.setSong(song);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
 
     private void showPage() {
         Platform.runLater(() -> {  // ensure UI updates happen on the JavaFX thread
