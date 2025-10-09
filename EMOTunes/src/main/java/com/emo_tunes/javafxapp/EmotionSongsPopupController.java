@@ -6,12 +6,16 @@ import javafx.animation.FadeTransition;
 import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
+import javafx.scene.Parent;
+import javafx.scene.Scene;
 import javafx.scene.control.Button;
 import javafx.scene.control.Label;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
+import javafx.stage.Stage;
 import javafx.util.Duration;
 
 import java.io.InputStream;
@@ -225,10 +229,21 @@ public class EmotionSongsPopupController {
         return card;
     }
     private void openSongDetailPage(SongInfo song) {
-        // Example: you can open a new FXML popup
         try {
-            SongDetailsPageController popup = new SongDetailsPageController(); // your custom popup class
-            popup.setSong(song);
+            // Load FXML
+            FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/emo_tunes/javafxapp/SongDetailsPage.fxml"));
+            Parent root = loader.load();  // ⚠ Must load before getting controller
+
+            // Get controller
+            SongDetailsPageController controller = loader.getController();
+            controller.setSong(song); // safe now, @FXML fields are initialized
+
+            // Show in new stage
+            Stage stage = new Stage();
+            stage.setScene(new Scene(root));
+            stage.setTitle(song.getSongName());
+            stage.show();
+
         } catch (Exception e) {
             e.printStackTrace();
         }
