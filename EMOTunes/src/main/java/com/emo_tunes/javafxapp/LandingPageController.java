@@ -7,6 +7,7 @@ import javafx.application.Platform;
 import javafx.concurrent.Task;
 import javafx.fxml.FXML;
 import javafx.fxml.FXMLLoader;
+import javafx.geometry.Pos;
 import javafx.scene.Node;
 import javafx.scene.Parent;
 import javafx.scene.Scene;
@@ -401,6 +402,55 @@ public class LandingPageController {
         task.setOnFailed(e -> e.getSource().getException().printStackTrace());
         new Thread(task).start();
     }
+
+    @FXML
+    private HBox searchBar;
+
+    public void focusOnSearchBar() {
+        Platform.runLater(() -> {
+            // 1️⃣ Focus & highlight the search field
+            searchField.requestFocus();
+            searchField.setStyle("-fx-border-color: #FFD700; -fx-border-width: 2; -fx-background-radius: 5;");
+
+            // 2️⃣ Create a dim overlay for the center area
+            StackPane overlay = new StackPane();
+            overlay.setStyle("-fx-background-color: rgba(0,0,0,0.4);");
+            overlay.setPickOnBounds(true); // block clicks under the overlay
+
+            // 3️⃣ Message Label
+            Label guideLabel = new Label("🔍 Search for songs to add");
+            guideLabel.setStyle(
+                    "-fx-text-fill: white; -fx-font-size: 20px; -fx-font-weight: bold;" +
+                            "-fx-background-color: rgba(0,0,0,0.6); -fx-padding: 15 25; -fx-background-radius: 10;"
+            );
+            overlay.getChildren().add(guideLabel);
+            StackPane.setAlignment(guideLabel, Pos.CENTER);
+
+            // 4️⃣ Add overlay to your main content pane (make sure you have fx:id="mainContentPane" in FXML)
+            mainContentPane.getChildren().add(overlay);
+
+            // 5️⃣ Fade in animation (optional but nice)
+            FadeTransition fadeIn = new FadeTransition(Duration.seconds(0.3), overlay);
+            fadeIn.setFromValue(0);
+            fadeIn.setToValue(1);
+            fadeIn.play();
+
+            // 6️⃣ After delay, remove highlight & overlay
+            PauseTransition pause = new PauseTransition(Duration.seconds(2.5));
+            pause.setOnFinished(e -> {
+                searchField.setStyle("");
+                FadeTransition fadeOut = new FadeTransition(Duration.seconds(0.3), overlay);
+                fadeOut.setFromValue(1);
+                fadeOut.setToValue(0);
+                fadeOut.setOnFinished(ev -> mainContentPane.getChildren().remove(overlay));
+                fadeOut.play();
+            });
+            pause.play();
+        });
+    }
+
+
+
 
     private void handleBackButton() {
         if (offset >= limit) {

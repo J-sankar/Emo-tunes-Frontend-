@@ -3,8 +3,10 @@ package com.emo_tunes.javafxapp;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import javafx.fxml.FXML;
+import javafx.fxml.FXMLLoader;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
+import javafx.scene.Parent;
 import javafx.scene.control.*;
 import javafx.scene.effect.DropShadow;
 import javafx.scene.image.Image;
@@ -12,8 +14,10 @@ import javafx.scene.image.ImageView;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
+import javafx.stage.Stage;
 
 import java.io.BufferedReader;
+import java.io.IOException;
 import java.io.InputStreamReader;
 import java.net.HttpURLConnection;
 import java.net.URL;
@@ -159,7 +163,8 @@ public class EmoListPageController {
                 conn.setRequestMethod("GET");
                 conn.setRequestProperty("Accept", "application/json");
 
-                if (conn.getResponseCode() == 200) {
+                int responseCode = conn.getResponseCode();
+                if (responseCode == 200) {
                     BufferedReader reader = new BufferedReader(new InputStreamReader(conn.getInputStream()));
                     StringBuilder response = new StringBuilder();
                     String line;
@@ -171,23 +176,39 @@ public class EmoListPageController {
 
                     javafx.application.Platform.runLater(() -> {
                         emolistContainer.getChildren().clear();
-                        for (PlaylistInfo list : lists)
-                            emolistContainer.getChildren().add(createEmoListCard(list));
+
+                        if (lists.isEmpty()) {
+                            Label noListsLabel = new Label("No emotion playlists yet — create one to get started!");
+                            noListsLabel.setStyle("-fx-font-size: 16px; -fx-font-weight: normal;");
+                            emolistContainer.getChildren().add(noListsLabel);
+                        } else {
+                            for (PlaylistInfo list : lists) {
+                                emolistContainer.getChildren().add(createEmoListCard(list));
+                            }
+                        }
                     });
                 } else {
-                    System.err.println("Failed to fetch EmoLists, HTTP code: " + conn.getResponseCode());
+                    System.err.println("⚠️ HTTP Error: " + responseCode);
+                    javafx.application.Platform.runLater(() -> {
+                        emolistContainer.getChildren().clear();
+                        Label errorLabel = new Label("No Emolists available.");
+                        errorLabel.setStyle("-fx-text-fill: white; -fx-font-size: 20px;");
+                        emolistContainer.getChildren().add(errorLabel);
+                    });
                 }
-                javafx.application.Platform.runLater(() -> {
-
-                });
-
 
                 conn.disconnect();
             } catch (Exception e) {
                 e.printStackTrace();
+                javafx.application.Platform.runLater(() -> {
+                    emolistContainer.getChildren().clear();
+                    Label errorLabel = new Label("Error loading emotion playlists. Please check your connection.");
+                    emolistContainer.getChildren().add(errorLabel);
+                });
             }
         }).start();
     }
+
 
     /** Create UI card for an EmoList */
     private HBox createEmoListCard(PlaylistInfo emoList) {
@@ -213,21 +234,48 @@ public class EmoListPageController {
         }
 
         Button addSongBtn = new Button("+ Add Song");
+        addSongBtn.setStyle(
+                "-fx-background-color: linear-gradient(to right, #89f7fe, #66a6ff);" +
+                        "-fx-text-fill: white; -fx-font-weight: bold;" +
+                        "-fx-background-radius: 20; -fx-padding: 6 14; -fx-cursor: hand;"
+        );
+
+// Hover effect
+        addSongBtn.setOnMouseEntered(e -> addSongBtn.setStyle(
+                "-fx-background-color: linear-gradient(to right, #66a6ff, #89f7fe);" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 20;" +
+                        "-fx-padding: 6 14;" +
+                        "-fx-cursor: hand;"
+        ));
+
+        addSongBtn.setOnMouseExited(e -> addSongBtn.setStyle(
+                "-fx-background-color: linear-gradient(to right, #89f7fe, #66a6ff);" +
+                        "-fx-text-fill: white;" +
+                        "-fx-font-weight: bold;" +
+                        "-fx-background-radius: 20;" +
+                        "-fx-padding: 6 14;" +
+                        "-fx-cursor: hand;"
+        ));
+
+// ✅ Main action (redirect to LandingPage + focus search bar)
         addSongBtn.setOnAction(e -> {
-            TextInputDialog dialog = new TextInputDialog();
-            dialog.setTitle("Add Song");
-            dialog.setHeaderText("Add a song to " + emoList.getPlaylistName());
-            dialog.setContentText("Song Name:");
-            dialog.showAndWait().ifPresent(song -> {
-                if (!song.isEmpty()) {
-                    Label songLabel = new Label("♪ " + song);
-                    songLabel.setStyle("-fx-text-fill: white;");
-                    songsBox.getChildren().add(songLabel);
-                    songsBox.setVisible(true);
-                    songsBox.setManaged(true);
-                }
-            });
+            try {
+                FXMLLoader loader = new FXMLLoader(getClass().getResource("/com/emo_tunes/javafxapp/LandingPage.fxml"));
+                Parent landingRoot = loader.load();
+
+                LandingPageController landingController = loader.getController();
+                landingController.focusOnSearchBar(); // highlight + focus
+
+                Stage currentStage = (Stage) addSongBtn.getScene().getWindow();
+                currentStage.getScene().setRoot(landingRoot);
+
+            } catch (IOException ex) {
+                ex.printStackTrace();
+            }
         });
+
 
         VBox rightBox = new VBox(nameLabel, emotionLabel, addSongBtn, songsBox);
         rightBox.setSpacing(5);
